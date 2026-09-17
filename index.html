@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KitCheck — School collection register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div id="lockScreen" class="lock-screen">
+    <form class="lock-card" id="lockForm">
+      <span class="vault-chip">AES-256-GCM · PBKDF2-SHA-256</span>
+      <h2 id="lockTitle">Unlock KitCheck</h2>
+      <p id="lockHelp">The register and face photos are sealed on this device.</p>
+      <label style="color:#9bb4ce">Staff PIN</label>
+      <input id="staffPin" type="password" autocomplete="current-password" required minlength="6" />
+      <div id="pin2wrap" class="hidden" style="margin-top:10px">
+        <label style="color:#9bb4ce">Confirm PIN</label>
+        <input id="staffPin2" type="password" autocomplete="new-password" minlength="6" />
+      </div>
+      <div class="lock-actions">
+        <button class="btn btn-primary" type="submit">Open vault</button>
+      </div>
+    </form>
+  </div>
+  <div id="appShell" class="hidden" style="display:contents">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">KC</div><div><h1>KitCheck</h1><p>Collection register</p></div></div>
+    <nav>
+      <button class="active" data-go="duty" onclick="go('duty')">Duty board</button>
+      <button data-go="register" onclick="go('register')">Register</button>
+      <button data-go="scan" onclick="go('scan')">Scan</button>
+      <button data-go="specials" onclick="go('specials')">Specials</button>
+      <button data-go="notify" onclick="go('notify')">Updates</button>
+      <button data-go="clauses" onclick="go('clauses')">Clauses</button>
+    </nav>
+    <div class="side-foot"><strong>Blue & White Primary</strong><span id="vaultStatus">AES-256-GCM</span>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px" type="button" onclick="lockNow()">Lock now</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div><h2 id="pageTitle">Duty board</h2><div class="sub" id="pageSub">Collection checklist.</div></div>
+      <div class="top-actions">
+        <input id="dutyDate" type="date" class="search" style="flex:0;min-width:160px" />
+        <button class="btn btn-ghost" onclick="uncollectedReport()">Who is left?</button>
+        <button class="btn btn-primary" onclick="exportDay()">Export sheet</button>
+      </div>
+    </header>
+    <div class="content">
+      <section class="page on" data-page="duty">
+        <div class="stats" id="stats"></div><div id="dutyProgress"></div>
+        <div class="toolbar"><input id="q" class="search" placeholder="Search learner" /></div>
+        <div id="dutyGrid"></div>
+      </section>
+      <section class="page" data-page="register">
+        <div class="panel"><h3 id="regFormTitle">Add learner</h3>
+          <form class="form-grid" onsubmit="saveChild(event)">
+            <input type="hidden" id="cid" /><input type="hidden" id="cphoto" />
+            <div><label>Full name</label><input id="cname" type="text" required /></div>
+            <div><label>Grade</label><input id="cgrade" type="text" /></div>
+            <div><label>Class</label><input id="cclass" type="text" /></div>
+            <div><label>Booking date</label><input id="cbook" type="date" /></div>
+            <div><label>Mom name</label><input id="cmom" type="text" /></div>
+            <div><label>Mom phone</label><input id="cmomph" type="tel" /></div>
+            <div><label>Dad name</label><input id="cdad" type="text" /></div>
+            <div><label>Dad phone</label><input id="cdadph" type="tel" /></div>
+            <div><label>Alt collector</label><input id="calt" type="text" /></div>
+            <div><label>Alt phone</label><input id="caltph" type="tel" /></div>
+            <div class="full"><label>Notes</label><textarea id="cnotes"></textarea></div>
+            <div class="full"><label>Gate photo</label>
+              <div class="photo-capture">
+                <img id="photoPreview" class="photo lg hidden" alt="" />
+                <video id="cam" class="cam hidden" playsinline></video>
+                <div>
+                  <button type="button" class="btn btn-primary" onclick="startCam()">Open camera</button>
+                  <button type="button" class="btn btn-ghost" onclick="captureCam()">Capture face</button>
+                  <label class="btn btn-ghost" style="margin-top:8px;display:inline-flex">Upload<input type="file" accept="image/*" hidden onchange="onPhotoFile(event)" /></label>
+                </div>
+              </div>
+              <label style="margin-top:12px;text-transform:none;letter-spacing:0;font-weight:500;display:flex;gap:8px;align-items:center">
+                <input id="cconsent" type="checkbox" /> Parent consented to gate-ID photo and scan print
+              </label>
+            </div>
+            <div class="full"><button class="btn btn-primary" type="submit">Save to vault</button>
+              <button class="btn btn-ghost" type="button" onclick="resetChildForm(null)">Clear</button></div>
+          </form>
+        </div>
+        <div id="regList"></div>
+      </section>
+      <section class="page" data-page="scan">
+        <div class="scan-layout">
+          <div class="panel"><h3>Gate scan camera</h3>
+            <div class="viewfinder"><video id="scanCam" playsinline></video><div class="oval"></div><div class="scan-hint" id="scanStatus">Start the scan camera.</div></div>
+            <div class="scan-actions">
+              <button class="btn btn-primary" type="button" onclick="startScanCam()">Start camera</button>
+              <button class="btn btn-ok" type="button" onclick="runScan()">Scan face</button>
+              <button class="btn btn-ghost" type="button" onclick="stopScanCam()">Stop</button>
+            </div>
+          </div>
+          <div class="panel"><h3>Scan result</h3>
+            <img id="scanSnap" class="photo xl hidden" alt="" />
+            <span id="liveFlag" class="badge b-school">No capture yet</span>
+            <div id="matchBox"></div>
+          </div>
+        </div>
+      </section>
+      <section class="page" data-page="specials">
+        <div class="panel"><h3>Book special</h3>
+          <form class="form-grid" onsubmit="saveSpecial(event)">
+            <div><label>Learner</label><select id="schild" required></select></div>
+            <div><label>Type</label><select id="stype"><option value="special-pickup">Special pickup</option><option value="event-pickup">Event pickup</option><option value="event-drop">Event drop-off</option><option value="aftercare">Aftercare</option><option value="early">Early collection</option></select></div>
+            <div><label>Date</label><input id="sdate" type="date" required /></div>
+            <div><label>Time</label><input id="stime" type="time" /></div>
+            <div><label>Collector</label><input id="swho" type="text" required /></div>
+            <div><label>Phone</label><input id="sph" type="tel" /></div>
+            <div class="full"><label>Instruction</label><textarea id="snote"></textarea></div>
+            <div class="full"><button class="btn btn-primary" type="submit">Add</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Booked</h3><div id="specialTable"></div></div>
+      </section>
+      <section class="page" data-page="notify">
+        <div class="panel"><h3>Updates</h3>
+          <div class="form-grid">
+            <div><label>Learner</label><select id="nchild" onchange="previewMsg()"></select></div>
+            <div><label>Send to</label><select id="nwho"><option value="both">Mom and dad</option><option value="mom">Mom</option><option value="dad">Dad</option><option value="alt">Alt</option></select></div>
+            <div><label>Type</label><select id="nkind" onchange="previewMsg()"><option value="waiting">Waiting</option><option value="collected">Collected</option><option value="notCollected">Not collected</option><option value="special">Special</option><option value="event">Event</option><option value="location">Location</option></select></div>
+            <div><label>Extra</label><input id="nnote" type="text" oninput="previewMsg()" /></div>
+            <div class="full"><label>Preview</label><textarea id="npreview"></textarea></div>
+            <div class="full">
+              <button class="btn btn-ok" type="button" onclick="previewMsg();sendNotice('whatsapp')">WhatsApp</button>
+              <button class="btn btn-primary" type="button" onclick="previewMsg();sendNotice('email')">Email</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel"><h3>Live location</h3>
+          <button class="btn btn-primary" type="button" onclick="shareLocation()">Capture point</button>
+          <button class="btn btn-ok" type="button" onclick="shareLocWhatsApp()">Share pin</button>
+          <div id="locBox"></div>
+        </div>
+        <div class="panel"><h3>Log</h3><div id="noticeLog"></div></div>
+      </section>
+      <section class="page clauses" data-page="clauses">
+        <div class="panel"><h3>Vault</h3>
+          <p>AES-256-GCM vault. PIN is not stored.</p>
+          <form class="form-grid" onsubmit="submitChangePin(event)">
+            <div><label>Current PIN</label><input id="oldPin" type="password" required /></div>
+            <div><label>New PIN</label><input id="newPin" type="password" minlength="6" required /></div>
+            <div><label>Confirm</label><input id="newPin2" type="password" minlength="6" required /></div>
+            <div class="full"><button class="btn btn-primary" type="submit">Re-seal</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Clauses</h3>
+          <ol><li>Nobody leaves unmarked.</li><li>Photo and scan are gate-ID only.</li><li>Staff confirm every scan.</li><li>Do not send photos on WhatsApp.</li></ol>
+        </div>
+      </section>
+    </div>
+  </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal"><h3 id="modalTitle"></h3><div id="modalBody"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" type="button" id="modalOk">Save</button>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
